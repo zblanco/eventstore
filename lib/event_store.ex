@@ -210,6 +210,66 @@ defmodule EventStore do
         )
       end
 
+      def read_stream_backward(
+            stream_uuid,
+            start_version \\ :stream_end,
+            count \\ @default_count,
+            timeout \\ @default_timeout
+          )
+
+      def read_stream_backward(stream_uuid, start_version, count, timeout) do
+        Stream.read_stream_backward(@conn, stream_uuid, start_version, count, opts(timeout))
+      end
+
+      def read_all_streams_backward(
+            start_event_number \\ :end,
+            count \\ @default_count,
+            timeout \\ @default_timeout
+          )
+
+      def read_all_streams_backward(start_event_number, count, timeout) do
+        Stream.read_stream_backward(
+          @conn,
+          @all_stream,
+          start_event_number,
+          count,
+          opts(timeout)
+        )
+      end
+
+      def stream_backward(
+            stream_uuid,
+            start_version \\ :stream_end,
+            read_batch_size \\ @default_batch_size,
+            timeout \\ @default_timeout
+          )
+
+      def stream_backward(stream_uuid, start_version, read_batch_size, timeout) do
+        Stream.stream_backward(
+          @conn,
+          stream_uuid,
+          start_version,
+          read_batch_size,
+          opts(timeout)
+        )
+      end
+
+      def stream_all_backward(
+            start_event_number \\ :end,
+            read_batch_size \\ @default_batch_size,
+            timeout \\ @default_timeout
+          )
+
+      def stream_all_backward(start_event_number, read_batch_size, timeout) do
+        Stream.stream_backward(
+          @conn,
+          @all_stream,
+          start_event_number,
+          read_batch_size,
+          opts(timeout)
+        )
+      end
+
       def subscribe(stream_uuid, opts \\ []) do
         Registration.subscribe(__MODULE__, @registry, stream_uuid, opts)
       end
@@ -495,6 +555,89 @@ defmodule EventStore do
               read_batch_size :: non_neg_integer,
               timeout :: timeout() | nil
             ) :: Enumerable.t()
+
+  @doc """
+  Reads the requested number of events from the given stream, in the reverse order of
+  which they were originally written.
+
+    - `stream_uuid` is used to uniquely identify a stream.
+
+    - `start_version` optionally, the version number of the first event to read.
+      Defaults to the end of the stream if not set.
+
+    - `count` optionally, the maximum number of events to read.
+      If not set it will be limited to returning 1,000 events from the stream.
+
+    - `timeout` an optional timeout for querying the database, in milliseconds.
+      Defaults to 15_000ms.
+  """
+  @callback read_stream_backward(
+              stream_uuid :: String.t(),
+              start_version :: non_neg_integer,
+              count :: non_neg_integer,
+              timeout :: timeout() | nil
+            ) ::
+              {:ok, list(EventStore.RecordedEvent.t())}
+              | {:error, reason :: term}
+
+  @doc """
+  Reads the requested number of events from all streams, in the reverse order of which
+  they were originally written.
+
+    - `start_event_number` optionally, the number of the first event to read.
+      Defaults to the end of the stream if not set.
+
+    - `count` optionally, the maximum number of events to read.
+      If not set it will be limited to returning 1,000 events from all streams.
+
+    - `timeout` an optional timeout for querying the database, in milliseconds.
+      Defaults to 15_000ms.
+  """
+  @callback read_all_streams_backward(
+              start_event_number :: non_neg_integer,
+              count :: non_neg_integer,
+              timeout :: timeout() | nil
+            ) ::
+              {:ok, list(EventStore.RecordedEvent.t())} | {:error, reason :: term}
+
+  @doc """
+  Streams events from a given stream, in the reverse order of which they originally
+  written starting from the `start_version`.
+
+  - `start_version` optionally, the version number of the first event to read going backwards.
+    Defaults to the end of the stream i.e. `:stream_end` if not set.
+
+  - `read_batch_size` optionally, the number of events to read at a time from
+    storage. Defaults to reading 1,000 events per batch.
+
+  - `timeout` an optional timeout for querying the database (per batch), in
+    milliseconds. Defaults to 15_000ms.
+  """
+  @callback stream_backward(
+              stream_uuid :: String.t(),
+              start_version :: :stream_end | non_neg_integer,
+              read_batch_size :: non_neg_integer,
+              timeout :: timeout() | nil
+            )  :: Enumerable.t() | {:error, reason :: term}
+
+  @doc """
+  Streams events from all streams, in the reverse order of which they were originally
+  written.
+
+    - `start_event_number` optionally, the number of the first event to read.
+      Defaults to the end of the stream if not set.
+
+    - `read_batch_size` optionally, the number of events to read at a time from
+      storage. Defaults to reading 1,000 events per batch.
+
+    - `timeout` an optional timeout for querying the database (per batch), in
+      milliseconds. Defaults to 15_000ms.
+  """
+  @callback stream_all_backward(
+              start_event_number :: :stream_end | non_neg_integer,
+              read_batch_size :: non_neg_integer,
+              timeout :: timeout() | nil
+            )  :: Enumerable.t()
 
   @doc """
   Create a transient subscription to a given stream.

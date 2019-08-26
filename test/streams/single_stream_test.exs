@@ -256,6 +256,24 @@ defmodule EventStore.Streams.SingleStreamTest do
     end
   end
 
+  # wip for reverse streaming capabilities
+  describe "stream backward" do
+    setup [:append_events_to_stream]
+
+    test "should stream events from single stream using single event batch size", %{
+      conn: conn,
+      serializer: serializer,
+      stream_uuid: stream_uuid
+    } do
+      read_events =
+        Stream.stream_backward(conn, stream_uuid, :stream_end, 1, serializer: serializer) |> Enum.to_list()
+
+      assert length(read_events) == 3
+      assert pluck(read_events, :event_number) == [1, 2, 3]
+      assert pluck(read_events, :stream_version) == [1, 2, 3]
+    end
+  end
+
   describe "subscribe to stream" do
     setup [:append_events_to_stream]
 

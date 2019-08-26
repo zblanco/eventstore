@@ -45,6 +45,22 @@ defmodule EventStore.Streams.Stream do
     end
   end
 
+  def read_stream_backward(conn, stream_uuid, start_version, count, opts \\ []) do
+    {serializer, opts} = Keyword.pop(opts, :serializer)
+
+    with {:ok, stream} <- stream_info(conn, stream_uuid, opts) do
+      read_storage_backward(conn, start_version, count, stream, serializer, opts)
+    end
+  end
+
+  def stream_backward(conn, stream_uuid, start_version, read_batch_size, opts \\ []) do
+    {serializer, opts} = Keyword.pop(opts, :serializer)
+
+    with {:ok, stream} <- stream_info(conn, stream_uuid, opts) do
+      stream_storage_backward(conn, start_version, read_batch_size, stream, serializer, opts)
+    end
+  end
+
   def start_from(conn, stream_uuid, start_from, opts \\ [])
 
   def start_from(_conn, _stream_uuid, :origin, _opts), do: {:ok, 0}
