@@ -20,6 +20,19 @@ defmodule EventStore.Storage.Reader do
     end
   end
 
+  @doc """
+  Read events appended to a single stream backward from the given starting version
+  """
+  def read_backward(conn, stream_id, start_version, count, opts \\ [])
+
+  def read_backward(conn, stream_id, start_version, count, opts) do
+    case Reader.Query.read_events_backward(conn, stream_id, start_version, count, opts) do
+      {:ok, []} = reply -> reply
+      {:ok, rows} -> map_rows_to_event_data(rows)
+      {:error, reason} -> failed_to_read(stream_id, reason)
+    end
+  end
+
   defp map_rows_to_event_data(rows) do
     {:ok, Reader.EventAdapter.to_event_data(rows)}
   end
@@ -97,7 +110,15 @@ defmodule EventStore.Storage.Reader do
 
     def read_events_forward(conn, stream_id, start_version, count, opts) do
       query = Statements.read_events_forward()
+      execute_query(query, conn, stream_id, start_version, count, opts)
+    end
 
+    def read_events_backward(conn, stream_id, start_version, count, opts) do
+      query = Statements.read_events_backward()
+      execute_query(query, conn, stream_id, start_version, count, opts)
+    end
+
+    defp execute_query(query, conn, stream_id, start_version, count, opts) do
       case Postgrex.query(conn, query, [stream_id, start_version, count], opts) do
         {:ok, %Postgrex.Result{num_rows: 0}} ->
           {:ok, []}
@@ -112,4 +133,5 @@ defmodule EventStore.Storage.Reader do
       end
     end
   end
+
 end

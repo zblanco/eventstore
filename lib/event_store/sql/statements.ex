@@ -498,6 +498,28 @@ defmodule EventStore.Sql.Statements do
     """
   end
 
+  def read_events_backward do
+    """
+    SELECT
+      se.stream_version,
+      e.event_id,
+      s.stream_uuid,
+      se.original_stream_version,
+      e.event_type,
+      e.correlation_id,
+      e.causation_id,
+      e.data,
+      e.metadata,
+      e.created_at
+    FROM stream_events se
+    INNER JOIN streams s ON s.stream_id = se.original_stream_id
+    INNER JOIN events e ON se.event_id = e.event_id
+    WHERE se.stream_id = $1 and se.stream_version <= $2
+    ORDER BY se.stream_version DESC
+    LIMIT $3;
+    """
+  end
+
   defp build_params(count, chunk_size) do
     1..(count * chunk_size)
     |> Stream.map(&Integer.to_string/1)

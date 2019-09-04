@@ -212,7 +212,7 @@ defmodule EventStore do
 
       def read_stream_backward(
             stream_uuid,
-            start_version \\ :stream_end,
+            start_version \\ :end,
             count \\ @default_count,
             timeout \\ @default_timeout
           )
@@ -239,7 +239,7 @@ defmodule EventStore do
 
       def stream_backward(
             stream_uuid,
-            start_version \\ :stream_end,
+            start_version \\ :end,
             read_batch_size \\ @default_batch_size,
             timeout \\ @default_timeout
           )

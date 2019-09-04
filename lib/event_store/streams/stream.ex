@@ -286,6 +286,86 @@ defmodule EventStore.Streams.Stream do
     )
   end
 
+  defp read_storage_backward(
+         _conn,
+         _start_version,
+         _count,
+         %Stream{stream_id: stream_id},
+         _serializer,
+         _opts
+       )
+       when is_nil(stream_id),
+       do: {:error, :stream_not_found}
+
+  defp read_storage_backward(
+        conn,
+        :end,
+        count,
+        %Stream{stream_version: stream_version} = stream,
+        serializer,
+        opts
+    ),
+    do: read_storage_backward(
+      conn, stream_version, count, stream, serializer, opts
+    )
+
+  defp read_storage_backward(conn, start_version, count, %Stream{} = stream, serializer, opts) do
+    %Stream{stream_id: stream_id} = stream
+    # WIP
+    case Storage.read_stream_backward(conn, stream_id, start_version, count, opts) do
+      {:ok, recorded_events} ->
+        deserialized_events = deserialize_recorded_events(recorded_events, serializer)
+
+        {:ok, deserialized_events}
+
+      {:error, _error} = reply ->
+        reply
+    end
+  end
+
+  defp stream_storage_backward(
+         _conn,
+         _start_version,
+         _read_batch_size,
+         %Stream{stream_id: stream_id},
+         _serializer,
+         _opts
+       )
+       when is_nil(stream_id),
+       do: {:error, :stream_not_found}
+
+  defp stream_storage_backward(
+        conn,
+        :end,
+        read_batch_size,
+        %Stream{stream_version: stream_version} = stream,
+        serializer,
+        opts
+    ),
+    do: stream_storage_backward(
+      conn, stream_version, read_batch_size, stream, serializer, opts
+    )
+
+  defp stream_storage_backward(
+         conn,
+         start_version,
+         read_batch_size,
+         %Stream{} = stream,
+         serializer,
+         opts
+       ) do
+    Elixir.Stream.resource(
+      fn -> start_version end,
+      fn next_version ->
+        case read_storage_backward(conn, next_version, read_batch_size, stream, serializer, opts) do
+          {:ok, []} -> {:halt, next_version}
+          {:ok, events} -> {events, next_version - length(events)}
+        end
+      end,
+      fn _ -> :ok end
+    )
+  end
+
   defp deserialize_recorded_events(recorded_events, serializer),
     do: Enum.map(recorded_events, &RecordedEvent.deserialize(&1, serializer))
 end

@@ -42,6 +42,14 @@ defmodule EventStore.Storage do
   end
 
   @doc """
+  Read events for the given stream backward from the starting version,
+  where `:end` is the last event/version of the stream.
+  """
+  def read_stream_backward(conn, stream_id, start_version, count, opts \\ []) do
+    Reader.read_backward(conn, stream_id, start_version, count, opts)
+  end
+
+  @doc """
   Get the id and version of the stream with the given `stream_uuid`.
   """
   def stream_info(conn, stream_uuid, opts \\ []) do
